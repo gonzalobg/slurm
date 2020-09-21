@@ -1110,8 +1110,10 @@ static bitstr_t *_pick_step_nodes(job_record_t *job_ptr,
 	/*
 	 * Exclusive mode:
 	 * Do not use nodes with insufficient CPUs, memory or GRES.
+	 * FIXME: We most likely don't need this as it makes it so functionality
+	 * does work.  Revisit!!!!
 	 */
-	if (step_spec->flags & SSF_EXCLUSIVE) {
+	if (0 && step_spec->flags & SSF_EXCLUSIVE) {
 		int avail_cpus, avail_tasks, total_cpus, total_tasks, node_inx;
 		uint64_t avail_mem, total_mem;
 		uint32_t nodes_picked_cnt = 0;
@@ -1345,7 +1347,11 @@ static bitstr_t *_pick_step_nodes(job_record_t *job_ptr,
 			if (!bit_test(nodes_avail, i))
 				continue;	/* node now DOWN */
 
-			total_cpus = job_resrcs_ptr->cpus[node_inx];
+			if (step_spec->flags & SSF_EXCLUSIVE)
+				total_cpus = job_resrcs_ptr->cpus[node_inx] -
+					job_resrcs_ptr->cpus_used[node_inx];
+			else
+				total_cpus = job_resrcs_ptr->cpus[node_inx];
 			usable_cpu_cnt[i] = avail_cpus = total_cpus;
 			if (_is_mem_resv() &&
 			    step_spec->pn_min_memory & MEM_PER_CPU) {
@@ -1354,6 +1360,9 @@ static bitstr_t *_pick_step_nodes(job_record_t *job_ptr,
 				/* ignore current step allocations */
 				tmp_mem    = job_resrcs_ptr->
 					     memory_allocated[node_inx];
+				if (step_spec->flags & SSF_EXCLUSIVE)
+					tmp_mem -= job_resrcs_ptr->
+						memory_used[node_inx];
 				tmp_cpus   = tmp_mem / mem_use;
 				total_cpus = MIN(total_cpus, tmp_cpus);
 				/* consider current step allocations */
@@ -1370,6 +1379,9 @@ static bitstr_t *_pick_step_nodes(job_record_t *job_ptr,
 				/* ignore current step allocations */
 				tmp_mem    = job_resrcs_ptr->
 					     memory_allocated[node_inx];
+				if (step_spec->flags & SSF_EXCLUSIVE)
+					tmp_mem -= job_resrcs_ptr->
+						memory_used[node_inx];
 				if (tmp_mem < mem_use)
 					total_cpus = 0;
 				/* consider current step allocations */
