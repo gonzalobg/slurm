@@ -1175,6 +1175,7 @@ static bitstr_t *_pick_step_nodes(job_record_t *job_ptr,
 			} else
 				avail_cpus = job_resrcs_ptr->cpus[node_inx] -
 					job_resrcs_ptr->cpus_used[node_inx];
+			info("looking at %d %d", node_inx, avail_cpus);
 			total_cpus = job_resrcs_ptr->cpus[node_inx];
 			if (cpus_per_task > 0) {
 				avail_tasks = avail_cpus / cpus_per_task;
@@ -1365,6 +1366,8 @@ static bitstr_t *_pick_step_nodes(job_record_t *job_ptr,
 			 */
 			if ((step_spec->flags & SSF_WHOLE) &&
 			    job_resrcs_ptr->cpus_used[node_inx]) {
+				info("can't use %d it has %d cpus used",
+				     node_inx,
 				     job_resrcs_ptr->cpus_used[node_inx]);
 				continue;
 			} else {
@@ -1935,7 +1938,7 @@ static void _pick_step_cores(step_record_t *step_ptr,
 			cpu_cnt	/= cpus_per_core;
 		}
 	}
-
+	info("using them all! %d", use_all_cores);
 	/* select idle cores first */
 	for (sock_inx=0; sock_inx<sockets; sock_inx++) {
 		for (core_inx=0; core_inx<cores; core_inx++) {
@@ -1954,7 +1957,7 @@ static void _pick_step_cores(step_record_t *step_ptr,
 			}
 			bit_set(job_resrcs_ptr->core_bitmap_used, bit_offset);
 			bit_set(step_ptr->core_bitmap_job, bit_offset);
-#if 0
+#if 1
 			info("step alloc N:%d S:%dC :%d",
 			     job_node_inx, sock_inx, core_inx);
 #endif
@@ -2081,6 +2084,7 @@ extern void step_alloc_lps(step_record_t *step_ptr)
 			cpus_alloc =
 				step_ptr->step_layout->tasks[step_node_inx] *
 				step_ptr->cpus_per_task;
+		info("allocating %d cpus", cpus_alloc);
 		job_resrcs_ptr->cpus_used[job_node_inx] += cpus_alloc;
 		gres_plugin_step_alloc(step_ptr->gres_list, job_ptr->gres_list,
 				job_node_inx, first_step_node,
@@ -3063,6 +3067,7 @@ extern slurm_step_layout_t *step_layout_create(step_record_t *step_ptr,
 
 			cpus = job_resrcs_ptr->cpus[pos];
 			cpus_used = job_resrcs_ptr->cpus_used[pos];
+			info("%d has %d %d", pos, cpus, cpus_used);
 			/*
 			 * Here we are trying to figure out the number
 			 * of cpus available if we only want to run 1
@@ -3115,6 +3120,7 @@ extern slurm_step_layout_t *step_layout_create(step_record_t *step_ptr,
 					cpus_task_reps[cpus_task_inx]++;
 			}
 
+			info("%d now %d %d", pos, cpus, cpus_used);
 			if (step_ptr->exclusive) {
 				usable_cpus = cpus - cpus_used;
 			} else
@@ -3129,7 +3135,7 @@ extern slurm_step_layout_t *step_layout_create(step_record_t *step_ptr,
 				usable_mem /= mem_use;
 				usable_cpus = MIN(usable_cpus, usable_mem);
 			}
-
+			info("we have %d usable", usable_cpus);
 			gres_cpus = gres_plugin_step_test(step_ptr->gres_list,
 							job_ptr->gres_list,
 							job_node_offset,
@@ -3138,6 +3144,7 @@ extern slurm_step_layout_t *step_layout_create(step_record_t *step_ptr,
 							rem_nodes, false,
 							job_ptr->job_id,
 							step_ptr->step_id.step_id);
+			info("we have %"PRIu64" gres", gres_cpus);
 			if (usable_cpus > gres_cpus)
 				usable_cpus = gres_cpus;
 			if (usable_cpus <= 0) {
